@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>光学谐振腔光线追迹</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0e1a;
+      --panel: #111827;
+      --card: #0f172a;
+      --border: #1e2d45;
+      --accent: #3b82f6;
+      --accent2: #8b5cf6;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --cyan: #22d3ee;
+      --red: #f87171;
+      --blue: #60a5fa;
+      --yellow: #fbbf24;
+      --green: #34d399;
+      --orange: #fb923c;
+    }
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      min-height: 100vh;
+    }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: #1e2d45; border-radius: 4px; }
+
+    header {
+      text-align: center;
+      padding: 20px 20px 14px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    }
+    header h1 {
+      font-size: 1.7rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      background: linear-gradient(90deg, var(--cyan), var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p { margin-top: 6px; font-size: 0.82rem; color: var(--muted); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 14px;
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 14px;
+    }
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .card h3 {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      margin-bottom: 10px;
+      padding-bottom: 7px;
+      border-bottom: 1px solid var(--border);
+    }
+    .slider-group { margin-bottom: 12px; }
+    .slider-group:last-child { margin-bottom: 0; }
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      gap: 8px;
+    }
+    .slider-value {
+      font-family: "Courier New", monospace;
+      color: var(--yellow);
+      font-size: 0.78rem;
+      white-space: nowrap;
+    }
+    input[type=range] {
+      width: 100%;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb:hover { background: var(--cyan); }
+    select, .num {
+      background: #0b1220;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 6px 8px;
+      font-size: 0.8rem;
+    }
+    select { width: 100%; cursor: pointer; }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    #presetRow.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    #presetRow .btn { width: 100%; text-align: center; white-space: nowrap; }
+    .btn {
+      border: 1px solid var(--border);
+      background: #1e293b;
+      color: var(--text);
+      border-radius: 7px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    .btn:hover { border-color: var(--accent); color: var(--accent); }
+    .btn.active { border-color: var(--cyan); color: var(--cyan); background: #0b2530; }
+    .btn.danger:hover { border-color: var(--red); color: var(--red); }
+    .btn.primary {
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      border: none;
+      color: #fff;
+      font-weight: 600;
+    }
+    .status {
+      text-align: center;
+      padding: 10px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      border: 1px solid var(--border);
+    }
+    .status-name { font-size: 1.05rem; font-weight: 700; margin-bottom: 3px; }
+    .status-desc { font-size: 0.73rem; color: var(--muted); line-height: 1.5; }
+    .metric-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .metric {
+      background: #0b1220;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      text-align: center;
+    }
+    .metric .k { font-size: 0.68rem; color: var(--muted); }
+    .metric .v { font-family: "Courier New", monospace; font-size: 0.82rem; color: var(--cyan); margin-top: 2px; }
+
+    .stage { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+    .canvas-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      position: relative;
+    }
+    .canvas-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .canvas-head h4 {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      letter-spacing: 0.4px;
+    }
+    .hint {
+      font-size: 0.7rem;
+      color: #3b82f688;
+      background: #1e293b;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 8px;
+    }
+    canvas { display: block; width: 100%; border-radius: 8px; background: #050810; }
+    .dual { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 14px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 10px 14px; margin-top: 8px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: #94a3b8; }
+    .swatch { width: 16px; height: 3px; border-radius: 2px; }
+
+    .lens-item {
+      background: #0b1220;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 8px;
+    }
+    .lens-item header-row, .lens-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      font-size: 0.76rem;
+      color: var(--cyan);
+    }
+    .chk {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.78rem; color: #94a3b8; margin: 6px 0;
+    }
+    .chk input { accent-color: var(--accent); }
+
+    .article {
+      max-width: 1600px;
+      margin: 10px auto 40px;
+      padding: 0 14px;
+    }
+    .article .card { padding: 22px 26px; line-height: 1.8; font-size: 0.92rem; color: #cbd5e1; }
+    .article h2 {
+      font-size: 1.15rem;
+      color: var(--text);
+      margin: 18px 0 8px;
+      padding-left: 10px;
+      border-left: 4px solid var(--accent);
+    }
+    .article h2:first-child { margin-top: 0; }
+    .article p { margin-bottom: 10px; }
+    .article blockquote {
+      border-left: 3px solid var(--cyan);
+      background: #0b1220;
+      padding: 10px 14px;
+      margin: 12px 0;
+      color: #94a3b8;
+      border-radius: 0 8px 8px 0;
+    }
+    .eq {
+      font-family: "Times New Roman", serif;
+      background: #0b1220;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin: 10px 0 14px;
+      text-align: center;
+      color: #e2e8f0;
+      overflow-x: auto;
+    }
+    .article ul { padding-left: 22px; margin-bottom: 12px; }
+    .article li { margin: 4px 0; }
+    .tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      padding: 1px 7px;
+      border-radius: 999px;
+      background: #1e293b;
+      color: var(--cyan);
+      border: 1px solid #164e63;
+      margin-left: 4px;
+    }
+
+    @media (max-width: 1100px) {
+      .layout { grid-template-columns: 1fr; }
+      .dual { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>光学谐振腔光线追迹</h1>
+    <p>傍轴 ABCD 矩阵 · 单光线往返迭代 · 可修改腔型并插入腔内透镜 · 离线运行</p>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="card">
+        <h3>腔稳定性</h3>
+        <div class="status">
+          <div class="status-name" id="stabName">计算中…</div>
+          <div class="status-desc" id="stabDesc"></div>
+        </div>
+        <div class="metric-grid">
+          <div class="metric"><div class="k">往返 (A+D)/2</div><div class="v" id="mVal">—</div></div>
+          <div class="metric"><div class="k">空腔 g₁g₂</div><div class="v" id="gVal">—</div></div>
+          <div class="metric"><div class="k">|r|<sub>max</sub></div><div class="v" id="rmaxVal">—</div></div>
+          <div class="metric"><div class="k">光线振荡周期</div><div class="v" id="periodVal">—</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>腔型预设</h3>
+        <div class="btn-row" id="presetRow"></div>
+      </div>
+
+      <div class="card">
+        <h3>谐振腔几何</h3>
+        <div class="slider-group">
+          <div class="slider-label"><span>腔长 L</span><span class="slider-value" id="LVal">40.0 mm</span></div>
+          <input type="range" id="LSlider" min="10" max="200" step="0.5" value="40" />
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span>左镜 R₁（+凹 / −凸）</span><span class="slider-value" id="R1Val">80 mm 凹</span></div>
+          <input type="range" id="R1Slider" min="-400" max="400" step="1" value="80" />
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span>右镜 R₂（+凹 / −凸）</span><span class="slider-value" id="R2Val">80 mm 凹</span></div>
+          <input type="range" id="R2Slider" min="-400" max="400" step="1" value="80" />
+        </div>
+        <div class="btn-row" style="margin-bottom:8px">
+          <button class="btn" onclick="setPlane(1)">R₁ 平面</button>
+          <button class="btn" onclick="setPlane(2)">R₂ 平面</button>
+          <button class="btn" onclick="makeSymmetric()">对称腔</button>
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span>镜面通光口径 D</span><span class="slider-value" id="DVal">12.0 mm</span></div>
+          <input type="range" id="DSlider" min="4" max="40" step="0.5" value="12" />
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>腔内透镜</h3>
+        <div class="chk"><input type="checkbox" id="clipAperture" /> 透镜 / 镜面孔径截断光线</div>
+        <div id="lensList"></div>
+        <button class="btn primary" style="width:100%;margin-top:4px" onclick="addLens()">＋ 添加透镜</button>
+      </div>
+
+      <div class="card">
+        <h3>初始光线</h3>
+        <div class="btn-row" style="margin-bottom:10px">
+          <button class="btn active" id="beamPar" onclick="setBeam('parallel')">平行光束</button>
+          <button class="btn" id="beamDiv" onclick="setBeam('diverge')">轴上点源</button>
+          <button class="btn" id="beamFan" onclick="setBeam('fan')">扇形光束</button>
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span>初始高度 r₀</span><span class="slider-value" id="r0Val">60 μm</span></div>
+          <input type="range" id="r0Slider" min="0" max="2000" step="5" value="60" />
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span>初始倾角 θ₀</span><span class="slider-value" id="thVal">0.250°</span></div>
+          <input type="range" id="thSlider" min="-2" max="2" step="0.01" value="0.25" />
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span>光线根数</span><span class="slider-value" id="nRayVal">1</span></div>
+          <input type="range" id="nRaySlider" min="1" max="9" step="1" value="1" />
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span>往返圈数</span><span class="slider-value" id="cycVal">40</span></div>
+          <input type="range" id="cycSlider" min="1" max="200" step="1" value="40" />
+        </div>
+        <div class="chk"><input type="checkbox" id="showGauss" checked /> 叠加本征高斯模包络</div>
+        <div class="chk"><input type="checkbox" id="fixY" /> 固定纵轴（±孔径）</div>
+      </div>
+    </aside>
+
+    <div class="stage">
+      <div class="canvas-card">
+        <div class="canvas-head">
+          <h4>物理腔内视图（折叠光路） · 可拖拽透镜与右镜</h4>
+          <span class="hint">拖拽透镜改位置 · 拖拽右镜改腔长</span>
+        </div>
+        <canvas id="cvFold" height="420"></canvas>
+        <div class="legend">
+          <div class="legend-item"><div class="swatch" style="background:#f87171"></div>追迹光线</div>
+          <div class="legend-item"><div class="swatch" style="background:#22d3ee"></div>光轴</div>
+          <div class="legend-item"><div class="swatch" style="background:#60a5fa"></div>镜面 / 透镜</div>
+          <div class="legend-item"><div class="swatch" style="background:#34d39988;height:8px"></div>高斯模 1/e² 半径</div>
+        </div>
+      </div>
+
+      <div class="dual">
+        <div class="canvas-card">
+          <div class="canvas-head">
+            <h4>展开往返轨迹 r(s) · 与 MATLAB 同一套 ABCD 迭代</h4>
+          </div>
+          <canvas id="cvUnf" height="280"></canvas>
+        </div>
+        <div class="canvas-card">
+          <div class="canvas-head">
+            <h4>空腔稳定性图 g₁–g₂</h4>
+          </div>
+          <canvas id="cvStab" height="280"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="article">
+    <div class="card">
+      <h2>算法说明</h2>
+      <p>本页把附件 MATLAB 程序里的思路做成可交互仿真：<strong>只对傍轴光线做 ABCD 矩阵迭代</strong>，而不是求解波动方程。注释里写得很清楚——追迹结果依赖于初始 (r, θ)，因为这是几何光学，不是本征模求解。</p>
+      <blockquote>对单根光线进行追迹，而不是计算多根光线。目前仍存在问题：追迹的结果和光线的初始参数有关。</blockquote>
+      <p>原脚本把一次往返展开到 z ∈ [0, 2L]：腔内透镜在去程、回程各作用一次，两端反射镜分别出现在 s = L 与 s = 2L。默认参数对应：</p>
+      <ul>
+        <li>腔长 L = 40 mm，两端凹面镜 R = 80 mm（空腔 g = 0.5）</li>
+        <li>薄凸透镜 f = 70 mm，放在距左镜 35 mm 处（去程 35 mm、回程 45 mm 各折射一次）</li>
+        <li>初始平行偏轴光线 r₀ = 60 μm，θ₀ = π/720</li>
+      </ul>
+
+      <h2>ABCD 光线矩阵</h2>
+      <p>光线矢量 (r, r′)，r′ = dr/ds 为沿传播方向的斜率。遇到元件时左乘对应矩阵：</p>
+      <div class="eq">自由空间 d：&nbsp; [ 1 , d ; 0 , 1 ] &nbsp;&nbsp; 薄透镜 f：&nbsp; [ 1 , 0 ; −1/f , 1 ] &nbsp;&nbsp; 球面镜 R：&nbsp; [ 1 , 0 ; −2/R , 1 ]</div>
+      <p>符号约定与原程序一致：<strong>R &gt; 0、f &gt; 0 表示对入射光线会聚</strong>（凹面镜 / 正透镜）。平面镜取 C = 0。</p>
+      <p>一次完整往返的合成矩阵 M<sub>rt</sub> 满足</p>
+      <div class="eq">m = (A + D) / 2，&nbsp; 稳定 ⇔ |m| &lt; 1</div>
+      <p>空腔（无透镜）还可写成 g<sub>i</sub> = 1 − L/R<sub>i</sub>，稳定区为 0 &lt; g₁g₂ &lt; 1。插入透镜后应以往返 m 为准，右侧 g₁–g₂ 图仍画出空腔工作点，便于对照腔型。</p>
+
+      <h2>腔内透镜与腔型</h2>
+      <p>改 R₁、R₂、L 即改变谐振腔的几何形状：平行平面、共焦（R = L）、共心（R = L/2）、半球、近稳长腔等。透镜按傍轴薄透镜处理，外形按等凸/等凹球面绘制，折射率取 n = 1.5，故曲率半径 R<sub>surf</sub> = f。各透镜默认共用同一外径（与第一片对齐）；仅当边厚低于 0.35 mm 时才自动缩小那一片的外径，避免透镜画成负边厚。</p>
+      <p>展开图的横轴是光程 s，一个往返长度为 2L，各圈轨迹叠在同一区间上，对应 MATLAB 中 <span class="tag">trace(:,cycle)</span> 对 z 的叠加画法。物理视图则把回程折叠回 [0, L]，更接近真实腔体。</p>
+
+      <h2>高斯本征模（可选）</h2>
+      <p>稳定腔存在自洽 q 参数：q = (Aq + B)/(Cq + D)。取 Im(q) &gt; 0 的根，再沿腔逐段变换，得到 1/e² 半径</p>
+      <div class="eq">w(z) = √[ λ / (π Im(−1/q(z))) ]，&nbsp; 默认 λ = 632.8 nm</div>
+      <p>它给出的是衍射极限的腔模包络，与上面那根几何光线不是同一回事。几何光线在稳定腔内会绕光轴振荡，包络由初始条件决定；高斯模则是往返相位自洽的基模。</p>
+    </div>
+  </div>
+
+<script>
+(function () {
+  const N_GLASS = 1.5;
+  const LAMBDA = 632.8e-6; // mm
+  const ET_MIN = 0.35;     // mm, shrink diameter if edge thickness below this
+  const COLORS = ["#f87171", "#fb923c", "#fbbf24", "#34d399", "#22d3ee", "#60a5fa", "#a78bfa", "#f472b6", "#e2e8f0"];
+
+  const S = {
+    L: 40,
+    R1: 80,
+    R2: 80,
+    D: 12,
+    r0um: 60,
+    thDeg: 0.25,
+    nRays: 1,
+    cycles: 40,
+    beam: "parallel",
+    clip: false,
+    showGauss: true,
+    fixY: false,
+    lenses: [{ id: 1, z: 35, f: 70 }],
+    nextId: 2
+  };
+
+  const cvF = document.getElementById("cvFold");
+  const cvU = document.getElementById("cvUnf");
+  const cvS = document.getElementById("cvStab");
+  const ctxF = cvF.getContext("2d");
+  const ctxU = cvU.getContext("2d");
+  const ctxS = cvS.getContext("2d");
+
+  let drag = null;
+  let lastTrace = null;
+
+  const presets = [
+    { name: "附件默认", L: 40, R1: 80, R2: 80, lenses: [{ z: 35, f: 70 }] },
+    { name: "对称凹腔", L: 40, R1: 80, R2: 80, lenses: [] },
+    { name: "共焦", L: 80, R1: 80, R2: 80, lenses: [] },
+    { name: "平面镜", L: 50, R1: 0, R2: 0, lenses: [] },
+    { name: "半球", L: 60, R1: 0, R2: 60, lenses: [] },
+    { name: "共心", L: 80, R1: 40, R2: 40, lenses: [] },
+    { name: "近稳", L: 120, R1: 400, R2: 400, lenses: [] },
+    { name: "凹–凸", L: 50, R1: 80, R2: -120, lenses: [] }
+  ];
+
+  function $(id) { return document.getElementById(id); }
+
+  function mul(A, B) {
+    return [
+      [A[0][0] * B[0][0] + A[0][1] * B[1][0], A[0][0] * B[0][1] + A[0][1] * B[1][1]],
+      [A[1][0] * B[0][0] + A[1][1] * B[1][0], A[1][0] * B[0][1] + A[1][1] * B[1][1]]
+    ];
+  }
+  function I() { return [[1, 0], [0, 1]]; }
+  function F(d) { return [[1, d], [0, 1]]; }
+  function Thin(f) {
+    if (!isFinite(f) || Math.abs(f) < 1e-9) return I();
+    return [[1, 0], [-1 / f, 1]];
+  }
+  function Mir(R) {
+    if (!R || !isFinite(R) || Math.abs(R) > 1e6) return I();
+    return [[1, 0], [-2 / R, 1]];
+  }
+  function applyMat(M, r, u) {
+    return [M[0][0] * r + M[0][1] * u, M[1][0] * r + M[1][1] * u];
+  }
+  function applyQ(M, q) {
+    const [a, b, c, d] = [M[0][0], M[0][1], M[1][0], M[1][1]];
+    const num = { re: a * q.re + b, im: a * q.im };
+    const den = { re: c * q.re + d, im: c * q.im };
+    const n2 = den.re * den.re + den.im * den.im;
+    if (n2 < 1e-30) return q;
+    return {
+      re: (num.re * den.re + num.im * den.im) / n2,
+      im: (num.im * den.re - num.re * den.im) / n2
+    };
+  }
+  function rocLabel(R) {
+    if (!R || Math.abs(R) > 1e6) return "∞ 平面";
+    const t = R > 0 ? "凹" : "凸";
+    return Math.abs(R).toFixed(0) + " mm " + t;
+  }
+  function sagOf(R, y) {
+    if (!R || !isFinite(R) || Math.abs(R) > 1e6) return 0;
+    const a = Math.abs(R);
+    if (Math.abs(y) >= a) return a;
+    return a - Math.sqrt(a * a - y * y);
+  }
+  function physZ(s, L) {
+    const t = ((s % (2 * L)) + 2 * L) % (2 * L);
+    return t <= L ? t : 2 * L - t;
+  }
+
+  function sortedLenses() {
+    return S.lenses
+      .filter(L => isFinite(L.z) && isFinite(L.f) && Math.abs(L.f) > 0.05)
+      .slice()
+      .sort((a, b) => a.z - b.z)
+      .map(L => ({
+        ...L,
+        z: Math.min(S.L - 0.2, Math.max(0.2, L.z))
+      }));
+  }
+
+  function eventsForRT() {
+    const L = S.L;
+    const ev = [];
+    for (const lens of sortedLenses()) {
+      ev.push({ s: lens.z, kind: "lens", f: lens.f, id: lens.id });
+      ev.push({ s: 2 * L - lens.z, kind: "lens", f: lens.f, id: lens.id });
+    }
+    ev.push({ s: L, kind: "mirror", R: S.R2 });
+    ev.push({ s: 2 * L, kind: "mirror", R: S.R1 });
+    ev.sort((a, b) => a.s - b.s || (a.kind === "lens" ? -1 : 1));
+    return ev;
+  }
+
+  function roundTripABCD() {
+    let M = I();
+    const ev = eventsForRT();
+    let s = 0;
+    for (const e of ev) {
+      const ds = e.s - s;
+      if (ds > 1e-12) M = mul(F(ds), M);
+      if (e.kind === "lens") M = mul(Thin(e.f), M);
+      else M = mul(Mir(e.R), M);
+      s = e.s;
+    }
+    return M;
+  }
+
+  function emptyG() {
+    const g1 = (!S.R1 || Math.abs(S.R1) > 1e6) ? 1 : 1 - S.L / S.R1;
+    const g2 = (!S.R2 || Math.abs(S.R2) > 1e6) ? 1 : 1 - S.L / S.R2;
+    return { g1, g2, prod: g1 * g2 };
+  }
+
+  function eigenQ(M) {
+    const A = M[0][0], B = M[0][1], C = M[1][0], D = M[1][1];
+    const m = 0.5 * (A + D);
+    if (Math.abs(m) >= 1 - 1e-12) return null;
+    const imagDisc = Math.sqrt(Math.max(0, 4 - (A + D) * (A + D)));
+    if (Math.abs(C) < 1e-18) {
+      if (Math.abs(B) < 1e-18) return null;
+      const invRe = (D - A) / (2 * B);
+      const invIm = -Math.sign(B || 1) * imagDisc / (2 * Math.abs(B));
+      const den = invRe * invRe + invIm * invIm;
+      if (den < 1e-30) return null;
+      const q = { re: invRe / den, im: -invIm / den };
+      if (q.im < 0) q.im = -q.im;
+      return q;
+    }
+    const re = (A - D) / (2 * C);
+    const im = imagDisc / (2 * C);
+    let q = { re, im };
+    if (q.im < 0) q = { re, im: -im };
+    return q;
+  }
+
+  function wFromQ(q) {
+    if (!q) return NaN;
+    const den = q.re * q.re + q.im * q.im;
+    if (den < 1e-30 || q.im <= 0) return NaN;
+    return Math.sqrt(LAMBDA * den / (Math.PI * q.im));
+  }
+
+  function lensDrawRadius(f, targetD) {
+    const absR = Math.abs(f) * 2 * (N_GLASS - 1); // 等凸/等凹：f = R / [2(n-1)]
+    let D = targetD;
+    const CT0 = Math.max(1.2, Math.min(2.4, targetD * 0.18));
+    if (f > 0) {
+      for (let k = 0; k < 12; k++) {
+        const y = D / 2;
+        const s = (absR > y) ? sagOf(absR, y) : y;
+        const ET = CT0 - 2 * s;
+        if (ET >= ET_MIN || D < 2.5) break;
+        D *= 0.92;
+      }
+    }
+    return { D, CT: CT0, Rsurf: absR, sign: f >= 0 ? 1 : -1 };
+  }
+
+  function allLensGeo() {
+    const list = sortedLenses();
+    if (!list.length) return [];
+    const commonD = S.D * 0.92;
+    const first = lensDrawRadius(list[0].f, commonD);
+    return list.map((L, i) => {
+      const geo = i === 0 ? first : lensDrawRadius(L.f, first.D);
+      return { ...L, ...geo };
+    });
+  }
+
+  function initialRays() {
+    const r0 = S.r0um * 1e-3; // mm
+    const th = S.thDeg * Math.PI / 180;
+    const n = S.nRays;
+    const rays = [];
+    if (S.beam === "parallel") {
+      if (n === 1) rays.push([r0, th]);
+      else {
+        for (let i = 0; i < n; i++) {
+          const t = n === 1 ? 0 : (i / (n - 1)) * 2 - 1;
+          rays.push([r0 * t, th]);
+        }
+      }
+    } else if (S.beam === "diverge") {
+      if (n === 1) rays.push([0, th]);
+      else {
+        for (let i = 0; i < n; i++) {
+          const t = n === 1 ? 0 : (i / (n - 1)) * 2 - 1;
+          rays.push([0, th * t]);
+        }
+      }
+    } else {
+      for (let i = 0; i < n; i++) {
+        const t = n === 1 ? 0 : (i / (n - 1)) * 2 - 1;
+        rays.push([r0 * t, th * t]);
+      }
+    }
+    return rays;
+  }
+
+  function halfApertureAt(z) {
+    const Rmir = S.D / 2;
+    if (!S.clip) return 1e9;
+    for (const L of allLensGeo()) {
+      if (Math.abs(L.z - z) < 0.15) {
+        return L.D / 2;
+      }
+    }
+    return Rmir;
+  }
+
+  function traceAll() {
+    const L = S.L;
+    const ev = eventsForRT();
+    const cycles = S.cycles;
+    const step = Math.max(L / 280, 0.05);
+    const rays0 = initialRays();
+    const unfolded = [];
+    const folded = [];
+    const gauss = [];
+    let rAbsMax = 0;
+    let escaped = false;
+
+    for (let k = 0; k < rays0.length; k++) {
+      let r = rays0[k][0], u = rays0[k][1];
+      const uf = [];
+      const fd = [];
+      let dead = false;
+      for (let c = 0; c < cycles; c++) {
+        let s = 0;
+        uf.push({ s: c * 2 * L + s, r, z: 0 });
+        fd.push({ z: 0, r, c });
+        for (const e of ev) {
+          const target = e.s;
+          while (s + 1e-9 < target) {
+            const ds = Math.min(step, target - s);
+            r += u * ds;
+            s += ds;
+            rAbsMax = Math.max(rAbsMax, Math.abs(r));
+            uf.push({ s: c * 2 * L + s, r, z: physZ(s, L) });
+            fd.push({ z: physZ(s, L), r, c });
+            if (S.clip && Math.abs(r) > S.D / 2 + 0.05) { dead = true; escaped = true; break; }
+            if (Math.abs(r) > 80) { dead = true; escaped = true; break; }
+          }
+          if (dead) break;
+          if (e.kind === "lens") {
+            if (S.clip && Math.abs(r) > halfApertureAt(physZ(e.s, L))) {
+              /* miss: no refraction */
+            } else {
+              const nu = applyMat(Thin(e.f), r, u);
+              r = nu[0]; u = nu[1];
+            }
+          } else {
+            if (S.clip && Math.abs(r) > S.D / 2) { dead = true; escaped = true; break; }
+            const nu = applyMat(Mir(e.R), r, u);
+            r = nu[0]; u = nu[1];
+          }
+          uf.push({ s: c * 2 * L + s, r, z: physZ(s, L) });
+          fd.push({ z: physZ(s, L), r, c });
+        }
+        if (dead) break;
+      }
+      unfolded.push(uf);
+      folded.push(fd);
+    }
+
+    const M = roundTripABCD();
+    const q0 = eigenQ(M);
+    if (q0 && S.showGauss) {
+      let q = q0;
+      let s = 0;
+      gauss.push({ z: 0, w: wFromQ(q) });
+      for (const e of ev) {
+        if (e.s > L + 1e-9) break;
+        const target = e.s;
+        const dsTotal = target - s;
+        const nSeg = Math.max(4, Math.ceil(dsTotal / step));
+        const ds = dsTotal / nSeg;
+        for (let i = 0; i < nSeg; i++) {
+          q = applyQ(F(ds), q);
+          s += ds;
+          gauss.push({ z: physZ(s, L), w: wFromQ(q) });
+        }
+        if (e.kind === "lens") q = applyQ(Thin(e.f), q);
+        else q = applyQ(Mir(e.R), q);
+        gauss.push({ z: physZ(s, L), w: wFromQ(q) });
+      }
+    }
+
+    return { unfolded, folded, gauss, rAbsMax, escaped, M, q0 };
+  }
+
+  function resizeCanvas(cv, h) {
+    const w = Math.max(320, cv.parentElement.clientWidth - 24);
+    if (cv.width !== w) cv.width = w;
+    if (h && cv.height !== h) cv.height = h;
+    cv.style.width = w + "px";
+  }
+
+  function mapX(z, pad, W, z0, z1) {
+    return pad.l + (z - z0) / (z1 - z0) * (W - pad.l - pad.r);
+  }
+  function mapY(r, pad, H, rmax) {
+    return pad.t + (H - pad.t - pad.b) * (0.5 - r / (2 * rmax));
+  }
+
+  function drawGrid(ctx, W, H, pad) {
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, "#050810");
+    bg.addColorStop(1, "#0a0e1a");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = "#1e2d4533";
+    ctx.lineWidth = 1;
+    for (let i = 1; i <= 6; i++) {
+      const y = pad.t + i * (H - pad.t - pad.b) / 7;
+      ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+    }
+  }
+
+  function arcSurface(ctx, zVertex, R, yMax, xOf, yOf, facing) {
+    const n = 48;
+    const pts = [];
+    const sEdgePhys = sagOf(R, yMax);
+    const sEdgeVis = (!R || Math.abs(R) > 1e6) ? 0 : Math.min(yMax * 0.32, 3.4);
+    for (let i = 0; i <= n; i++) {
+      const y = -yMax + 2 * yMax * i / n;
+      let s = 0;
+      if (sEdgePhys > 1e-9 && sEdgeVis > 0) s = sagOf(R, y) / sEdgePhys * sEdgeVis;
+      let z = zVertex;
+      if (R && Math.abs(R) <= 1e6) {
+        const concave = R > 0;
+        if (facing === "right") z = zVertex + (concave ? s : -s);
+        else z = zVertex + (concave ? -s : s);
+      }
+      pts.push({ z, y });
+    }
+    return pts;
+  }
+
+  function drawLensBody(ctx, lens, xOf, yOf) {
+    const geo = lens;
+    const yMax = geo.D / 2;
+    const zc = lens.z;
+    const n = 40;
+    const left = [], right = [];
+    const sEdgePhys = sagOf(geo.Rsurf, yMax);
+    const convex = lens.f >= 0;
+    // 矢高只用于外形辨认：双凸中心厚、双凹中心薄
+    const sEdgeVis = Math.min(yMax * 0.22, 2.0);
+    const etMinVis = 0.5;
+    const ctVis = convex
+      ? Math.max(geo.CT, 2 * sEdgeVis + etMinVis)
+      : Math.max(geo.CT, 1.4);
+    const halfCT = ctVis / 2;
+    for (let i = 0; i <= n; i++) {
+      const y = -yMax + 2 * yMax * i / n;
+      const s = sEdgePhys > 1e-9 ? sagOf(geo.Rsurf, y) / sEdgePhys * sEdgeVis : 0;
+      if (convex) {
+        // 等凸：顶点外凸，边缘退回（中心厚）
+        left.push({ z: zc - halfCT + s, y });
+        right.push({ z: zc + halfCT - s, y });
+      } else {
+        // 等凹：顶点内凹，边缘外伸（中心薄）
+        left.push({ z: zc - halfCT - s, y });
+        right.push({ z: zc + halfCT + s, y });
+      }
+    }
+    ctx.beginPath();
+    ctx.moveTo(xOf(left[0].z), yOf(left[0].y));
+    for (const p of left) ctx.lineTo(xOf(p.z), yOf(p.y));
+    for (let i = right.length - 1; i >= 0; i--) ctx.lineTo(xOf(right[i].z), yOf(right[i].y));
+    ctx.closePath();
+    const g = ctx.createLinearGradient(xOf(zc - 3), 0, xOf(zc + 3), 0);
+    g.addColorStop(0, "rgba(96,165,250,0.08)");
+    g.addColorStop(0.5, "rgba(34,211,238,0.28)");
+    g.addColorStop(1, "rgba(96,165,250,0.08)");
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.strokeStyle = "#60a5fa";
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    ctx.fillStyle = "#93c5fd";
+    ctx.font = "11px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("L" + lens.id + "  f=" + (lens.f > 0 ? "+" : "") + lens.f.toFixed(1), xOf(zc), yOf(yMax) - 10);
+  }
+
+  function drawMirror(ctx, zV, R, yMax, facing, xOf, yOf) {
+    const pts = arcSurface(ctx, zV, R, yMax, xOf, yOf, facing);
+    const thick = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(xOf(pts[0].z), yOf(pts[0].y));
+    for (const p of pts) ctx.lineTo(xOf(p.z), yOf(p.y));
+    const back = facing === "right" ? -thick : thick;
+    for (let i = pts.length - 1; i >= 0; i--) {
+      ctx.lineTo(xOf(pts[i].z + back), yOf(pts[i].y));
+    }
+    ctx.closePath();
+    ctx.fillStyle = facing === "right" ? "rgba(139,92,246,0.18)" : "rgba(59,130,246,0.18)";
+    ctx.fill();
+    ctx.strokeStyle = facing === "right" ? "#a78bfa" : "#60a5fa";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(xOf(pts[0].z), yOf(pts[0].y));
+    for (const p of pts) ctx.lineTo(xOf(p.z), yOf(p.y));
+    ctx.stroke();
+  }
+
+  function drawFolded(tr) {
+    const W = cvF.width, H = cvF.height;
+    const pad = { l: 52, r: 18, t: 36, b: 36 };
+    drawGrid(ctxF, W, H, pad);
+    const L = S.L;
+    const yAper = S.D / 2;
+    const rmax = yAper * 1.12;
+    const wPeak = (tr.gauss || []).reduce((m, p) => Math.max(m, isFinite(p.w) ? p.w : 0), 0);
+    const rPhys = Math.max(tr.rAbsMax || 0, wPeak, 1e-4);
+    let mag = 1;
+    if (!S.fixY && !S.clip) {
+      mag = (yAper * 0.62) / rPhys;
+      mag = Math.max(1, Math.min(4000, mag));
+    }
+    const xOf = z => mapX(z, pad, W, -0.08 * L, L * 1.08);
+    const yOf = r => mapY(r, pad, H, rmax);
+    const yRay = r => yOf(r * mag);
+
+    ctxF.strokeStyle = "#22d3ee55";
+    ctxF.lineWidth = 1;
+    ctxF.setLineDash([5, 5]);
+    ctxF.beginPath(); ctxF.moveTo(xOf(-0.05 * L), yOf(0)); ctxF.lineTo(xOf(L * 1.05), yOf(0)); ctxF.stroke();
+    ctxF.setLineDash([]);
+
+    drawMirror(ctxF, 0, S.R1, yAper, "right", xOf, yOf);
+    drawMirror(ctxF, L, S.R2, yAper, "left", xOf, yOf);
+
+    ctxF.strokeStyle = "#1e293b";
+    ctxF.lineWidth = 1;
+    ctxF.setLineDash([2, 4]);
+    ctxF.beginPath(); ctxF.moveTo(xOf(0), yOf(yAper)); ctxF.lineTo(xOf(L), yOf(yAper)); ctxF.stroke();
+    ctxF.beginPath(); ctxF.moveTo(xOf(0), yOf(-yAper)); ctxF.lineTo(xOf(L), yOf(-yAper)); ctxF.stroke();
+    ctxF.setLineDash([]);
+
+    for (const lens of allLensGeo()) drawLensBody(ctxF, lens, xOf, yOf);
+
+    tr.folded.forEach((path, idx) => {
+      if (path.length < 2) return;
+      const col = COLORS[idx % COLORS.length];
+      ctxF.beginPath();
+      ctxF.moveTo(xOf(path[0].z), yRay(path[0].r));
+      const maxPts = 8000;
+      const stride = Math.max(1, Math.floor(path.length / maxPts));
+      for (let i = 1; i < path.length; i += stride) {
+        const p = path[i];
+        if (Math.abs(p.r * mag) > rmax * 1.35) { ctxF.stroke(); ctxF.beginPath(); continue; }
+        ctxF.lineTo(xOf(p.z), yRay(p.r));
+      }
+      ctxF.strokeStyle = col;
+      ctxF.globalAlpha = 0.78;
+      ctxF.lineWidth = 1.2;
+      ctxF.stroke();
+      ctxF.globalAlpha = 1;
+    });
+
+    if (tr.gauss && tr.gauss.length > 3 && S.showGauss) {
+      const fw = tr.gauss.filter(p => isFinite(p.w) && p.z >= 0 && p.z <= L);
+      if (fw.length > 2) {
+        ctxF.beginPath();
+        ctxF.moveTo(xOf(fw[0].z), yRay(fw[0].w));
+        for (const p of fw) ctxF.lineTo(xOf(p.z), yRay(p.w));
+        for (let i = fw.length - 1; i >= 0; i--) ctxF.lineTo(xOf(fw[i].z), yRay(-fw[i].w));
+        ctxF.closePath();
+        ctxF.fillStyle = "rgba(52,211,153,0.12)";
+        ctxF.fill();
+        ctxF.setLineDash([5, 4]);
+        ctxF.strokeStyle = "rgba(52,211,153,0.85)";
+        ctxF.lineWidth = 1.4;
+        ctxF.stroke();
+        ctxF.setLineDash([]);
+      }
+    }
+
+    ctxF.fillStyle = "#64748b";
+    ctxF.font = "11px monospace";
+    ctxF.textAlign = "center";
+    ctxF.fillText("z = 0", xOf(0), H - 12);
+    ctxF.fillText("z = L = " + L.toFixed(1) + " mm", xOf(L), H - 12);
+    ctxF.textAlign = "right";
+    ctxF.fillText("+" + rmax.toFixed(2) + " mm", pad.l - 6, yOf(rmax) + 4);
+    ctxF.fillText("0", pad.l - 6, yOf(0) + 4);
+    ctxF.fillText("−" + rmax.toFixed(2), pad.l - 6, yOf(-rmax) + 4);
+    ctxF.textAlign = "left";
+    ctxF.fillStyle = "#334155";
+    ctxF.fillText("r", 10, pad.t + 4);
+    if (mag > 1.05) {
+      ctxF.fillStyle = "#fbbf24";
+      ctxF.font = "11px sans-serif";
+      ctxF.textAlign = "right";
+      ctxF.fillText("光线 / 高斯模径向显示 ×" + mag.toFixed(0), W - pad.r, pad.t - 14);
+    }
+  }
+
+  function drawUnfolded(tr) {
+    const W = cvU.clientWidth, H = cvU.clientHeight;
+    const pad = { l: 50, r: 14, t: 18, b: 32 };
+    drawGrid(ctxU, W, H, pad);
+    const L = S.L;
+    const rmax = S.fixY ? S.D / 2 : Math.max(0.08, (tr.rAbsMax || 0.05) * 1.15);
+    const xOf = s => mapX(s, pad, W, 0, 2 * L);
+    const yOf = r => mapY(r, pad, H, rmax);
+
+    ctxU.strokeStyle = "#22d3ee44";
+    ctxU.setLineDash([4, 4]);
+    ctxU.beginPath(); ctxU.moveTo(pad.l, yOf(0)); ctxU.lineTo(W - pad.r, yOf(0)); ctxU.stroke();
+    ctxU.setLineDash([]);
+    ctxU.strokeStyle = "#8b5cf688";
+    ctxU.beginPath(); ctxU.moveTo(xOf(L), pad.t); ctxU.lineTo(xOf(L), H - pad.b); ctxU.stroke();
+
+    function vline(s, color) {
+      ctxU.strokeStyle = color;
+      ctxU.globalAlpha = 0.45;
+      ctxU.beginPath(); ctxU.moveTo(xOf(s), pad.t); ctxU.lineTo(xOf(s), H - pad.b); ctxU.stroke();
+      ctxU.globalAlpha = 1;
+    }
+    vline(L, "#a78bfa");
+    vline(2 * L, "#60a5fa");
+    for (const lens of sortedLenses()) {
+      vline(lens.z, "#22d3ee");
+      vline(2 * L - lens.z, "#22d3ee");
+    }
+
+    tr.unfolded.forEach((path, idx) => {
+      ctxU.beginPath();
+      let started = false;
+      const stride = Math.max(1, Math.floor(path.length / 6000));
+      for (let i = 0; i < path.length; i += stride) {
+        const p = path[i];
+        const sMod = ((p.s % (2 * L)) + 2 * L) % (2 * L);
+        const x = xOf(sMod);
+        const y = yOf(p.r);
+        if (!started) { ctxU.moveTo(x, y); started = true; }
+        else {
+          const prev = path[Math.max(0, i - stride)];
+          const prevMod = ((prev.s % (2 * L)) + 2 * L) % (2 * L);
+          if (sMod + 1e-6 < prevMod) { ctxU.stroke(); ctxU.beginPath(); ctxU.moveTo(x, y); }
+          else ctxU.lineTo(x, y);
+        }
+      }
+      ctxU.strokeStyle = COLORS[idx % COLORS.length];
+      ctxU.globalAlpha = 0.7;
+      ctxU.lineWidth = 1;
+      ctxU.stroke();
+      ctxU.globalAlpha = 1;
+    });
+
+    ctxU.fillStyle = "#64748b";
+    ctxU.font = "11px monospace";
+    ctxU.textAlign = "center";
+    ctxU.fillText("0", xOf(0), H - 10);
+    ctxU.fillText("L", xOf(L), H - 10);
+    ctxU.fillText("2L  (一次往返)", xOf(2 * L), H - 10);
+    ctxU.textAlign = "right";
+    ctxU.fillText(rmax.toFixed(2) + " mm", pad.l - 4, yOf(rmax) + 4);
+  }
+
+  function drawStab(tr) {
+    const W = cvS.clientWidth, H = cvS.clientHeight;
+    const pad = { l: 42, r: 14, t: 16, b: 32 };
+    drawGrid(ctxS, W, H, pad);
+    const xOf = g => pad.l + (g + 1.5) / 3 * (W - pad.l - pad.r);
+    const yOf = g => pad.t + (1.5 - g) / 3 * (H - pad.t - pad.b);
+
+    ctxS.save();
+    ctxS.beginPath();
+    ctxS.rect(pad.l, pad.t, W - pad.l - pad.r, H - pad.t - pad.b);
+    ctxS.clip();
+    ctxS.fillStyle = "rgba(52,211,153,0.18)";
+    const nH = 140;
+    ctxS.beginPath();
+    ctxS.moveTo(xOf(0), yOf(0));
+    for (let i = 1; i <= nH; i++) {
+      const g1 = 1.5 * i / nH;
+      ctxS.lineTo(xOf(g1), yOf(Math.min(1.5, 1 / Math.max(g1, 1e-6))));
+    }
+    ctxS.lineTo(xOf(1.5), yOf(0));
+    ctxS.closePath();
+    ctxS.fill();
+    ctxS.beginPath();
+    ctxS.moveTo(xOf(0), yOf(0));
+    for (let i = 1; i <= nH; i++) {
+      const g1 = -1.5 * i / nH;
+      ctxS.lineTo(xOf(g1), yOf(Math.max(-1.5, 1 / Math.min(g1, -1e-6))));
+    }
+    ctxS.lineTo(xOf(-1.5), yOf(0));
+    ctxS.closePath();
+    ctxS.fill();
+    ctxS.restore();
+
+    ctxS.strokeStyle = "#334155";
+    ctxS.lineWidth = 1;
+    ctxS.beginPath(); ctxS.moveTo(xOf(-1.5), yOf(0)); ctxS.lineTo(xOf(1.5), yOf(0)); ctxS.stroke();
+    ctxS.beginPath(); ctxS.moveTo(xOf(0), yOf(-1.5)); ctxS.lineTo(xOf(0), yOf(1.5)); ctxS.stroke();
+    ctxS.strokeStyle = "#fbbf2444";
+    ctxS.beginPath(); ctxS.moveTo(xOf(1), yOf(-1.5)); ctxS.lineTo(xOf(1), yOf(1.5)); ctxS.stroke();
+    ctxS.beginPath(); ctxS.moveTo(xOf(-1.5), yOf(1)); ctxS.lineTo(xOf(1.5), yOf(1)); ctxS.stroke();
+
+    ctxS.fillStyle = "#64748b";
+    ctxS.font = "11px monospace";
+    ctxS.textAlign = "center";
+    ctxS.fillText("g₁", W / 2, H - 10);
+    ctxS.save();
+    ctxS.translate(14, H / 2);
+    ctxS.rotate(-Math.PI / 2);
+    ctxS.fillText("g₂", 0, 0);
+    ctxS.restore();
+
+    const g = emptyG();
+    const gx = xOf(g.g1), gy = yOf(g.g2);
+    ctxS.beginPath(); ctxS.arc(gx, gy, 6, 0, Math.PI * 2);
+    ctxS.fillStyle = "#fbbf24";
+    ctxS.fill();
+    ctxS.strokeStyle = "#fff";
+    ctxS.lineWidth = 1.5;
+    ctxS.stroke();
+    ctxS.fillStyle = "#fbbf24";
+    ctxS.font = "11px sans-serif";
+    ctxS.textAlign = "left";
+    ctxS.fillText("空腔工作点", gx + 8, gy - 8);
+    ctxS.fillStyle = "#94a3b8";
+    ctxS.font = "10px monospace";
+    ctxS.fillText("g1=" + g.g1.toFixed(3) + "  g2=" + g.g2.toFixed(3), pad.l + 6, pad.t + 12);
+
+    const m = 0.5 * (tr.M[0][0] + tr.M[1][1]);
+    ctxS.fillStyle = Math.abs(m) < 1 ? "#34d399" : "#f87171";
+    ctxS.fillText("含透镜 m=" + m.toFixed(4), pad.l + 6, pad.t + 26);
+  }
+
+  function updateStatus(tr) {
+    const M = tr.M;
+    const m = 0.5 * (M[0][0] + M[1][1]);
+    const g = emptyG();
+    const name = $("stabName");
+    const desc = $("stabDesc");
+    if (!isFinite(m)) {
+      name.textContent = "矩阵异常";
+      name.style.color = "#f87171";
+      desc.textContent = "焦距或腔长设置导致计算溢出";
+    } else if (Math.abs(m) < 1 - 1e-4) {
+      name.textContent = "稳定腔";
+      name.style.color = "#34d399";
+      const th = Math.acos(Math.max(-1, Math.min(1, m)));
+      const per = 2 * Math.PI / th;
+      desc.textContent = "往返本征值在单位圆上，几何光线绕轴振荡而不逃逸。";
+      $("periodVal").textContent = per.toFixed(2) + " 圈";
+    } else if (Math.abs(Math.abs(m) - 1) < 1e-4) {
+      name.textContent = "临界腔";
+      name.style.color = "#fbbf24";
+      desc.textContent = "|m| = 1，如平行平面或共心极限，对失调敏感。";
+      $("periodVal").textContent = "—";
+    } else {
+      name.textContent = "不稳定腔";
+      name.style.color = "#f87171";
+      desc.textContent = "光线每次往返被放大，有限圈后会走出孔径。";
+      $("periodVal").textContent = "发散";
+    }
+    $("mVal").textContent = isFinite(m) ? m.toFixed(4) : "—";
+    $("gVal").textContent = isFinite(g.prod) ? g.prod.toFixed(3) : "—";
+    $("rmaxVal").textContent = (tr.rAbsMax * 1000).toFixed(1) + " μm";
+  }
+
+  function render() {
+    resizeCanvas(cvF, 420);
+    resizeCanvas(cvU, 280);
+    resizeCanvas(cvS, 280);
+    const tr = traceAll();
+    lastTrace = tr;
+    drawFolded(tr);
+    drawUnfolded(tr);
+    drawStab(tr);
+    updateStatus(tr);
+  }
+
+  function syncLabels() {
+    $("LVal").textContent = S.L.toFixed(1) + " mm";
+    $("R1Val").textContent = rocLabel(S.R1);
+    $("R2Val").textContent = rocLabel(S.R2);
+    $("DVal").textContent = S.D.toFixed(1) + " mm";
+    $("r0Val").textContent = S.r0um.toFixed(0) + " μm";
+    $("thVal").textContent = S.thDeg.toFixed(3) + "°";
+    $("nRayVal").textContent = String(S.nRays);
+    $("cycVal").textContent = String(S.cycles);
+    $("LSlider").value = S.L;
+    $("R1Slider").value = Math.max(-400, Math.min(400, S.R1 || 0));
+    $("R2Slider").value = Math.max(-400, Math.min(400, S.R2 || 0));
+    $("DSlider").value = S.D;
+    $("r0Slider").value = S.r0um;
+    $("thSlider").value = S.thDeg;
+    $("nRaySlider").value = S.nRays;
+    $("cycSlider").value = S.cycles;
+    $("clipAperture").checked = S.clip;
+    $("showGauss").checked = S.showGauss;
+    $("fixY").checked = S.fixY;
+    renderLensList();
+  }
+
+  function renderLensList() {
+    const box = $("lensList");
+    if (!S.lenses.length) {
+      box.innerHTML = '<div style="font-size:0.75rem;color:#64748b;margin:6px 0">当前为空腔。可添加薄透镜。</div>';
+      return;
+    }
+    box.innerHTML = S.lenses.map(L => `
+      <div class="lens-item">
+        <div class="lens-top">
+          <span>透镜 L${L.id}</span>
+          <button class="btn danger" onclick="removeLens(${L.id})">删除</button>
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span>位置 z</span><span class="slider-value">${L.z.toFixed(1)} mm</span></div>
+          <input type="range" min="1" max="${Math.max(2, S.L - 1)}" step="0.1" value="${L.z}"
+            oninput="updateLens(${L.id}, 'z', this.value)" />
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span>焦距 f</span><span class="slider-value">${L.f.toFixed(1)} mm</span></div>
+          <input type="range" min="-200" max="200" step="0.5" value="${L.f}"
+            oninput="updateLens(${L.id}, 'f', this.value)" />
+        </div>
+      </div>
+    `).join("");
+  }
+
+  window.addLens = function () {
+    if (S.lenses.length >= 6) return;
+    const z = S.L * (0.3 + 0.1 * S.lenses.length);
+    S.lenses.push({ id: S.nextId++, z: Math.min(S.L - 2, z), f: 70 });
+    syncLabels(); render();
+  };
+  window.removeLens = function (id) {
+    S.lenses = S.lenses.filter(L => L.id !== id);
+    syncLabels(); render();
+  };
+  window.updateLens = function (id, key, val) {
+    const L = S.lenses.find(x => x.id === id);
+    if (!L) return;
+    L[key] = parseFloat(val);
+    if (key === "z") L.z = Math.min(S.L - 0.3, Math.max(0.3, L.z));
+    if (key === "f" && Math.abs(L.f) < 1) L.f = L.f >= 0 ? 1 : -1;
+    syncLabels(); render();
+  };
+  window.setPlane = function (which) {
+    if (which === 1) S.R1 = 0;
+    else S.R2 = 0;
+    syncLabels(); render();
+  };
+  window.makeSymmetric = function () {
+    S.R2 = S.R1;
+    syncLabels(); render();
+  };
+  window.setBeam = function (t) {
+    S.beam = t;
+    ["parallel", "diverge", "fan"].forEach(k => {
+      const id = k === "parallel" ? "beamPar" : k === "diverge" ? "beamDiv" : "beamFan";
+      $(id).classList.toggle("active", S.beam === k);
+    });
+    if (t === "diverge") { S.r0um = 0; S.thDeg = 0.25; }
+    if (t === "parallel") { S.r0um = 60; S.thDeg = 0.25; }
+    if (t === "fan") { S.r0um = 200; S.thDeg = 0.4; S.nRays = Math.max(S.nRays, 5); }
+    syncLabels(); render();
+  };
+  window.applyPreset = function (i) {
+    const p = presets[i];
+    S.L = p.L; S.R1 = p.R1; S.R2 = p.R2;
+    S.lenses = p.lenses.map((L, idx) => ({ id: idx + 1, z: L.z, f: L.f }));
+    S.nextId = S.lenses.length + 1;
+    document.querySelectorAll("#presetRow .btn").forEach((b, k) => b.classList.toggle("active", k === i));
+    syncLabels(); render();
+  };
+
+  $("presetRow").innerHTML = presets.map((p, i) =>
+    `<button class="btn${i === 0 ? " active" : ""}" onclick="applyPreset(${i})">${p.name}</button>`
+  ).join("");
+
+  [
+    ["LSlider", v => { S.L = +v; S.lenses.forEach(L => { L.z = Math.min(S.L - 0.3, L.z); }); }],
+    ["R1Slider", v => { S.R1 = +v; }],
+    ["R2Slider", v => { S.R2 = +v; }],
+    ["DSlider", v => { S.D = +v; }],
+    ["r0Slider", v => { S.r0um = +v; }],
+    ["thSlider", v => { S.thDeg = +v; }],
+    ["nRaySlider", v => { S.nRays = +v; }],
+    ["cycSlider", v => { S.cycles = +v; }]
+  ].forEach(([id, fn]) => {
+    $(id).addEventListener("input", e => { fn(e.target.value); syncLabels(); render(); });
+  });
+  $("clipAperture").addEventListener("change", e => { S.clip = e.target.checked; render(); });
+  $("showGauss").addEventListener("change", e => { S.showGauss = e.target.checked; render(); });
+  $("fixY").addEventListener("change", e => { S.fixY = e.target.checked; render(); });
+
+  function hitTest(mx, my) {
+    const W = cvF.width, H = cvF.height;
+    const pad = { l: 52, r: 18, t: 36, b: 36 };
+    const L = S.L;
+    const yAper = S.D / 2;
+    const rmax = S.fixY ? yAper : Math.max(yAper * 0.45, (lastTrace && lastTrace.rAbsMax || 0.05) * 1.25, 0.15);
+    const rmaxU = Math.min(rmax, yAper * 1.15);
+    const xOf = z => mapX(z, pad, W, -0.08 * L, L * 1.08);
+    const zOf = x => {
+      const z0 = -0.08 * L, z1 = L * 1.08;
+      return z0 + (x - pad.l) / (W - pad.l - pad.r) * (z1 - z0);
+    };
+    const z = zOf(mx);
+    if (Math.abs(xOf(L) - mx) < 14) return { type: "mirror2" };
+    for (const lens of sortedLenses()) {
+      if (Math.abs(xOf(lens.z) - mx) < 16) return { type: "lens", id: lens.id };
+    }
+    void my; void z; void rmaxU;
+    return null;
+  }
+
+  cvF.addEventListener("mousedown", e => {
+    const rec = cvF.getBoundingClientRect();
+    const mx = (e.clientX - rec.left) * (cvF.width / rec.width);
+    const my = (e.clientY - rec.top) * (cvF.height / rec.height);
+    const h = hitTest(mx, my);
+    if (h) {
+      drag = { ...h, x0: mx };
+      cvF.style.cursor = "grabbing";
+      e.preventDefault();
+    }
+  });
+  window.addEventListener("mousemove", e => {
+    if (!drag) return;
+    const rec = cvF.getBoundingClientRect();
+    const mx = (e.clientX - rec.left) * (cvF.width / rec.width);
+    const pad = { l: 52, r: 18 };
+    const W = cvF.width;
+    const z0 = -0.08 * S.L, z1 = S.L * 1.08;
+    const z = z0 + (mx - pad.l) / (W - pad.l - pad.r) * (z1 - z0);
+    if (drag.type === "lens") {
+      const L = S.lenses.find(x => x.id === drag.id);
+      if (L) L.z = Math.min(S.L - 0.4, Math.max(0.4, z));
+    } else if (drag.type === "mirror2") {
+      S.L = Math.min(200, Math.max(10, z));
+      S.lenses.forEach(Lns => { Lns.z = Math.min(S.L - 0.4, Lns.z); });
+    }
+    syncLabels(); render();
+  });
+  window.addEventListener("mouseup", () => { drag = null; cvF.style.cursor = "default"; });
+
+  cvF.addEventListener("mousemove", e => {
+    if (drag) return;
+    const rec = cvF.getBoundingClientRect();
+    const mx = (e.clientX - rec.left) * (cvF.width / rec.width);
+    const my = (e.clientY - rec.top) * (cvF.height / rec.height);
+    cvF.style.cursor = hitTest(mx, my) ? "ew-resize" : "default";
+  });
+
+  window.addEventListener("resize", render);
+  syncLabels();
+  render();
+})();
+</script>
+</body>
+</html>

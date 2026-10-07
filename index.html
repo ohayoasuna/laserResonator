@@ -795,20 +795,28 @@
     const geo = lens;
     const yMax = geo.D / 2;
     const zc = lens.z;
-    const halfCT = Math.max(geo.CT / 2, 0.55);
     const n = 40;
     const left = [], right = [];
     const sEdgePhys = sagOf(geo.Rsurf, yMax);
-    const sEdgeVis = Math.min(yMax * 0.28, 2.6);
+    const convex = lens.f >= 0;
+    // 矢高只用于外形辨认：双凸中心厚、双凹中心薄
+    const sEdgeVis = Math.min(yMax * 0.22, 2.0);
+    const etMinVis = 0.5;
+    const ctVis = convex
+      ? Math.max(geo.CT, 2 * sEdgeVis + etMinVis)
+      : Math.max(geo.CT, 1.4);
+    const halfCT = ctVis / 2;
     for (let i = 0; i <= n; i++) {
       const y = -yMax + 2 * yMax * i / n;
       const s = sEdgePhys > 1e-9 ? sagOf(geo.Rsurf, y) / sEdgePhys * sEdgeVis : 0;
-      if (geo.sign > 0) {
-        left.push({ z: zc - halfCT - s, y });
-        right.push({ z: zc + halfCT + s, y });
-      } else {
+      if (convex) {
+        // 等凸：顶点外凸，边缘退回（中心厚）
         left.push({ z: zc - halfCT + s, y });
         right.push({ z: zc + halfCT - s, y });
+      } else {
+        // 等凹：顶点内凹，边缘外伸（中心薄）
+        left.push({ z: zc - halfCT - s, y });
+        right.push({ z: zc + halfCT + s, y });
       }
     }
     ctx.beginPath();
